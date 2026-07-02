@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сбер — Инвестиционный Советник</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  :root {
+    --sber-green: #21A038;
+    --sber-green-dark: #1A8A2E;
+    --sber-green-light: #4CC764;
+    --sber-gold: #F0C75E;
+    --sber-gold-dark: #D4A843;
+    --bg-primary: #0A0E17;
+    --bg-card: rgba(16, 22, 36, 0.85);
+    --bg-card-hover: rgba(22, 30, 48, 0.92);
+    --text-primary: #F0F2F5;
+    --text-secondary: rgba(240, 242, 245, 0.6);
+    --text-muted: rgba(240, 242, 245, 0.35);
+    --border: rgba(33, 160, 56, 0.15);
+    --border-hover: rgba(33, 160, 56, 0.35);
+    --danger: #E84855;
+    --warning: #F0C75E;
+    --success: #21A038;
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 6px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    --glow-green: 0 0 40px rgba(33, 160, 56, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(33, 160, 56, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(240, 199, 94, 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, rgba(33, 160, 56, 0.03) 0%, transparent 70%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    background: rgba(10, 14, 23, 0.88);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--sber-green), var(--sber-green-light));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 22px; color: #fff;
+    box-shadow: 0 4px 20px rgba(33, 160, 56, 0.3);
+  }
+  .header-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .header-time { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--sber-green), var(--sber-gold));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #fff;
+    border: 2px solid rgba(33, 160, 56, 0.3);
+  }
+
+  /* ── Layout ── */
+  .dashboard {
+    position: relative; z-index: 1;
+    max-width: 1440px; margin: 0 auto;
+    padding: 24px 32px 48px;
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(12, 1fr);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(33,160,56,0.3), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .card:hover { border-color: var(--border-hover); background: var(--bg-card-hover); }
+  .card:hover::before { opacity: 1; }
+  .card-title {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--text-muted); margin-bottom: 16px;
+  }
+
+  /* ── Stat Cards ── */
+  .stat-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+    cursor: default;
+  }
+  .stat-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: var(--glow-green); }
+  .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; }
+  .stat-value { font-size: 28px; font-weight: 800; margin: 8px 0 4px; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .stat-change { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .stat-change.up { color: var(--success); }
+  .stat-change.down { color: var(--danger); }
+  .stat-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 12px;
+  }
+
+  /* ── Risk Profiler ── */
+  .profiler { grid-column: 1 / 5; }
+  .risk-slider-group { margin: 20px 0; }
+  .risk-slider-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 500; }
+  input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 6px;
+    border-radius: 3px; background: rgba(255,255,255,0.08); outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--sber-green); cursor: pointer;
+    box-shadow: 0 2px 12px rgba(33,160,56,0.4);
+    border: 3px solid #fff;
+  }
+  .risk-badge {
+    display: inline-block; padding: 6px 16px; border-radius: 20px;
+    font-size: 13px; font-weight: 700; margin-top: 12px; letter-spacing: 0.3px;
+  }
+  .risk-conservative { background: rgba(33,160,56,0.15); color: var(--sber-green-light); }
+  .risk-moderate { background: rgba(240,199,94,0.15); color: var(--sber-gold); }
+  .risk-aggressive { background: rgba(232,72,85,0.15); color: var(--danger); }
+
+  .question-group { margin-bottom: 20px; }
+  .question-group p { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+  .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .radio-btn {
+    padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .radio-btn:hover { border-color: var(--sber-green); color: var(--text-primary); }
+  .radio-btn.active {
+    background: rgba(33,160,56,0.15); border-color: var(--sber-green);
+    color: var(--sber-green-light);
+  }
+
+  /* ── Allocation Donut ── */
+  .allocation { grid-column: 5 / 9; }
+  .chart-container { position: relative; height: 260px; margin: 8px 0; }
+  .alloc-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .alloc-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .alloc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Products ── */
+  .products { grid-column: 9 / -1; }
+  .product-list { display: flex; flex-direction: column; gap: 10px; max-height: 380px; overflow-y: auto; }
+  .product-list::-webkit-scrollbar { width: 4px; }
+  .product-list::-webkit-scrollbar-thumb { background: rgba(33,160,56,0.3); border-radius: 2px; }
+  .product-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer; transition: all 0.25s;
+  }
+  .product-item:hover { background: rgba(33,160,56,0.08); border-color: var(--border-hover); transform: translateX(4px); }
+  .product-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+  }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-size: 13px; font-weight: 600; }
+  .product-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .product-yield { font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .product-yield.green { color: var(--sber-green-light); }
+
+  /* ── Performance Chart ── */
+  .performance { grid-column: 1 / 8; }
+  .chart-lg { height: 300px; position: relative; }
+  .chart-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .chart-tab {
+    padding: 6px 14px; border-radius: 16px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .chart-tab.active { background: var(--sber-green); border-color: var(--sber-green); color: #fff; }
+  .chart-tab:hover:not(.active) { border-color: var(--border-hover); }
+
+  /* ── Market Indices ── */
+  .indices { grid-column: 8 / -1; }
+  .index-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .index-item:last-child { border-bottom: none; }
+  .index-name { font-size: 14px; font-weight: 600; }
+  .index-ticker { font-size: 11px; color: var(--text-muted); }
+  .index-val { text-align: right; }
+  .index-price { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .index-pct { font-size: 12px; font-weight: 600; }
+
+  /* ── Recommendations AI ── */
+  .ai-section { grid-column: 1 / -1; }
+  .ai-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .ai-card {
+    padding: 20px; border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    transition: all 0.3s;
+  }
+  .ai-card:hover { border-color: var(--border-hover); background: rgba(33,160,56,0.04); }
+  .ai-card-icon { font-size: 28px; margin-bottom: 12px; }
+  .ai-card-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .ai-card-text { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .ai-card-tag {
+    display: inline-block; margin-top: 12px; padding: 4px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600;
+    background: rgba(33,160,56,0.1); color: var(--sber-green-light);
+  }
+
+  /* ── Goal Calculator ── */
+  .goal-calc { grid-column: 1 / 7; }
+  .calc-form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+  .form-input {
+    width: 100%; padding: 12px 16px; border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    font-family: inherit; outline: none; transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--sber-green); }
+  .form-select {
+    width: 100%; padding: 12px 16px; border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    color: var(--text-primary); font-size: 14px; font-weight: 600;
+    font-family: inherit; outline: none; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%23888' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center;
+  }
+  .btn-calc {
+    grid-column: 1 / -1; padding: 14px; border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--sber-green), var(--sber-green-dark));
+    border: none; color: #fff; font-size: 14px; font-weight: 700;
+    font-family: inherit; cursor: pointer; transition: all 0.25s;
+    letter-spacing: 0.3px;
+  }
+  .btn-calc:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(33,160,56,0.35); }
+  .calc-result {
+    padding: 20px; border-radius: var(--radius-sm);
+    background: rgba(33,160,56,0.06); border: 1px solid rgba(33,160,56,0.15);
+    display: none;
+  }
+  .calc-result.visible { display: block; }
+  .calc-result-title { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+  .calc-result-value { font-size: 32px; font-weight: 800; color: var(--sber-green-light); }
+  .calc-result-sub { font-size: 13px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
+
+  /* ── Scenario Chart ── */
+  .scenario { grid-column: 7 / -1; }
+  .scenario-chart { height: 280px; position: relative; }
+
+  /* ── Responsive ── */
+  @media (max-width: 1024px) {
+    .dashboard { padding: 16px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .profiler, .allocation, .products { grid-column: 1 / -1; }
+    .performance, .indices { grid-column: 1 / -1; }
+    .ai-grid { grid-template-columns: 1fr; }
+    .goal-calc, .scenario { grid-column: 1 / -1; }
+  }
+  @media (max-width: 640px) {
+    .header { padding: 12px 16px; }
+    .stat-row { grid-template-columns: 1fr; }
+    .calc-form { grid-template-columns: 1fr; }
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .card, .stat-card { animation: fadeUp 0.5s ease both; }
+  .stat-row .stat-card:nth-child(1) { animation-delay: 0.05s; }
+  .stat-row .stat-card:nth-child(2) { animation-delay: 0.1s; }
+  .stat-row .stat-card:nth-child(3) { animation-delay: 0.15s; }
+  .stat-row .stat-card:nth-child(4) { animation-delay: 0.2s; }
+
+  /* ── Pulse ── */
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--sber-green); display: inline-block;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(33,160,56,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(33,160,56,0); }
+    100% { box-shadow: 0 0 0 0 rgba(33,160,56,0); }
+  }
+
+  .disclaimer {
+    grid-column: 1 / -1; text-align: center;
+    font-size: 11px; color: var(--text-muted); padding: 16px 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">С</div>
+    <div>
+      <div class="header-title">Инвестиционный Советник</div>
+      <div class="header-subtitle">СберИнвестиции · Персональная аналитика</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pulse-dot"></span>
+    <span class="header-time" id="clock"></span>
+    <div class="avatar">АК</div>
+  </div>
+</header>
+
+<!-- ═══════════ DASHBOARD ═══════════ -->
+<div class="dashboard">
+
+  <!-- ── Stat Cards ── -->
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(33,160,56,0.1)">💰</div>
+      <div class="stat-label">Стоимость портфеля</div>
+      <div class="stat-value" id="portfolioValue">4 280 000 ₽</div>
+      <div class="stat-change up" id="portfolioChange">▲ +12.4% за год</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(240,199,94,0.1)">📈</div>
+      <div class="stat-label">Доходность YTD</div>
+      <div class="stat-value" style="color:var(--sber-green-light)" id="ytdReturn">+8.7%</div>
+      <div class="stat-change up">▲ +2.1% vs бенчмарк</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(232,72,85,0.1)">⚡</div>
+      <div class="stat-label">Дивиденды (год)</div>
+      <div class="stat-value">387 200 ₽</div>
+      <div class="stat-change up">▲ Рейнвестированы</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(100,120,240,0.1)">🎯</div>
+      <div class="stat-label">Риск-профиль</div>
+      <div class="stat-value" id="riskProfileStat">Умеренный</div>
+      <div class="stat-change" style="color:var(--sber-gold)">⬤ Оптимально</div>
+    </div>
+  </div>
+
+  <!-- ── Risk Profiler ── -->
+  <div class="card profiler">
+    <div class="card-title">🧠 Профиль инвестора</div>
+
+    <div class="question-group">
+      <p>Ваш инвестиционный горизонт?</p>
+      <div class="radio-group" data-q="horizon">
+        <button class="radio-btn" data-v="1">До 1 года</button>
+        <button class="radio-btn active" data-v="2">1–3 года</button>
+        <button class="radio-btn" data-v="3">3–5 лет</button>
+        <button class="radio-btn" data-v="4">5+ лет</button>
+      </div>
+    </div>
+
+    <div class="question-group">
+      <p>Допустимая просадка портфеля?</p>
+      <div class="radio-group" data-q="drawdown">
+        <button class="radio-btn" data-v="1">До 5%</button>
+        <button class="radio-btn active" data-v="2">5–15%</button>
+        <button class="radio-btn" data-v="3">15–30%</button>
+        <button class="radio-btn" data-v="4">30%+</button>
+      </div>
+    </div>
+
+    <div class="question-group">
+      <p>Опыт инвестирования?</p>
+      <div class="radio-group" data-q="experience">
+        <button class="radio-btn" data-v="1">Новичок</button>
+        <button class="radio-btn" data-v="2">1–3 года</button>
+        <button class="radio-btn active" data-v="3">3–5 лет</button>
+        <button class="radio-btn" data-v="4">5+ лет</button>
+      </div>
+    </div>
+
+    <div class="risk-slider-group">
+      <label>Целевая годовая доходность: <strong id="targetYield">15%</strong></label>
+      <input type="range" id="yieldSlider" min="5" max="35" value="15" step="1">
+    </div>
+
+    <div id="riskBadge" class="risk-badge risk-moderate">⚖️ Умеренный профиль</div>
+  </div>
+
+  <!-- ── Asset Allocation ── -->
+  <div class="card allocation">
+    <div class="card-title">📊 Рекомендуемая аллокация</div>
+    <div class="chart-container">
+      <canvas id="allocChart"></canvas>
+    </div>
+    <div class="alloc-legend" id="allocLegend"></div>
+  </div>
+
+  <!-- ── Products ── -->
+  <div class="card products">
+    <div class="card-title">🏦 Рекомендуемые продукты Сбера</div>
+    <div class="product-list" id="productList"></div>
+  </div>
+
+  <!-- ── Performance Chart ── -->
+  <div class="card performance">
+    <div class="card-title">📈 Динамика портфеля</div>
+    <div class="chart-tabs">
+      <button class="chart-tab active" data-period="1m">1 мес</button>
+      <button class="chart-tab" data-period="3m">3 мес</button>
+      <button class="chart-tab" data-period="6m">6 мес</button>
+      <button class="chart-tab" data-period="1y">1 год</button>
+      <button class="chart-tab" data-period="all">Всё время</button>
+    </div>
+    <div class="chart-lg">
+      <canvas id="perfChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Market Indices ── -->
+  <div class="card indices">
+    <div class="card-title">🌐 Рынки в реальном времени</div>
+    <div id="indicesList"></div>
+  </div>
+
+  <!-- ── AI Recommendations ── -->
+  <div class="card ai-section">
+    <div class="card-title">🤖 AI-рекомендации Советника</div>
+    <div class="ai-grid" id="aiGrid"></div>
+  </div>
+
+  <!-- ── Goal Calculator ── -->
+  <div class="card goal-calc">
+    <div class="card-title">🎯 Калькулятор финансовой цели</div>
+    <div class="calc-form">
+      <div class="form-group">
+        <label>Целевая сумма (₽)</label>
+        <input type="text" class="form-input" id="goalAmount" value="10 000 000" placeholder="10 000 000">
+      </div>
+      <div class="form-group">
+        <label>Срок (лет)</label>
+        <input type="number" class="form-input" id="goalYears" value="5" min="1" max="30">
+      </div>
+      <div class="form-group">
+        <label>Начальный взнос (₽)</label>
+        <input type="text" class="form-input" id="goalInitial" value="1 000 000" placeholder="1 000 000">
+      </div>
+      <div class="form-group">
+        <label>Стратегия</label>
+        <select class="form-select" id="goalStrategy">
+          <option value="conservative">Консервативная (8% г.)</option>
+          <option value="moderate" selected>Умеренная (14% г.)</option>
+          <option value="aggressive">Агрессивная (22% г.)</option>
+        </select>
+      </div>
+      <button class="btn-calc" onclick="calculateGoal()">Рассчитать план</button>
+    </div>
+    <div class="calc-result" id="calcResult">
+      <div class="calc-result-title">Ежемесячный взнос для достижения цели</div>
+      <div class="calc-result-value" id="calcMonthly"></div>
+      <div class="calc-result-sub" id="calcDetails"></div>
+    </div>
+  </div>
+
+  <!-- ── Scenario Chart ── -->
+  <div class="card scenario">
+    <div class="card-title">🔮 Сценарный анализ портфеля (5 лет)</div>
+    <div class="scenario-chart">
+      <canvas id="scenarioChart"></canvas>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ Данные носят информационный характер и не являются индивидуальной инвестиционной рекомендацией.<br>
+    Инвестиции сопряжены с риском. Прошлые результаты не гарантируют будущей доходности. ПАО Сбербанк, лиц. ЦБ РФ.
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA & STATE
+// ═══════════════════════════════════════════════════════
+
+const STATE = {
+  horizon: 2, drawdown: 2, experience: 3, targetYield: 15,
+  riskScore: 0, profile: 'moderate'
+};
+
+const PROFILES = {
+  conservative: {
+    label: '🛡️ Консервативный профиль', cls: 'risk-conservative',
+    stat: 'Консерватив.',
+    alloc: [
+      { name: 'ОФЗ / Гособлигации', pct: 45, color: '#21A038' },
+      { name: 'Корпоративные облигации', pct: 25, color: '#4CC764' },
+      { name: 'Денежный рынок', pct: 15, color: '#F0C75E' },
+      { name: 'Голубые фишки', pct: 10, color: '#6B9CFF' },
+      { name: 'Золото', pct: 5, color: '#D4A843' }
+    ],
+    products: [
+      { icon: '📋', bg: 'rgba(33,160,56,0.1)', name: 'Фонд «Сбер — Облигации»', desc: 'Портфель ОФЗ и корп. бондов IG', yld: '+11.2%' },
+      { icon: '🏛️', bg: 'rgba(100,180,255,0.1)', name: 'ОФЗ-ПД 26243', desc: 'Постоянный купон 9.6%, погашение 2038', yld: '9.6% YTM' },
+      { icon: '💎', bg: 'rgba(240,199,94,0.1)', name: 'Фонд «Золото»', desc: 'Физическое золото, хедж инфляции', yld: '+6.8%' },
+      { icon: '🏦', bg: 'rgba(33,160,56,0.1)', name: 'Накопительный счёт Сбер', desc: 'Ежедневное начисление, ₽ без риска', yld: '16% год.' },
+      { icon: '📊', bg: 'rgba(150,100,255,0.1)', name: 'Фонд денежного рынка', desc: 'RUSFAR o/n, ликвидность T+0', yld: '15.8%' },
+    ]
+  },
+  moderate: {
+    label: '⚖️ Умеренный профиль', cls: 'risk-moderate',
+    stat: 'Умеренный',
+    alloc: [
+      { name: 'Акции (РФ)', pct: 35, color: '#21A038' },
+      { name: 'Облигации', pct: 25, color: '#4CC764' },
+      { name: 'Фонды акций (глоб.)', pct: 15, color: '#6B9CFF' },
+      { name: 'Денежный рынок', pct: 10, color: '#F0C75E' },
+      { name: 'Золото / сырьё', pct: 10, color: '#D4A843' },
+      { name: 'IPO / Pre-IPO', pct: 5, color: '#E84855' }
+    ],
+    products: [
+      { icon: '🚀', bg: 'rgba(33,160,56,0.1)', name: 'Фонд «Сбер — Топ акций»', desc: 'Газпром, Лукойл, Сбер, Яндекс, Полюс', yld: '+18.3%' },
+      { icon: '📋', bg: 'rgba(100,180,255,0.1)', name: 'Фонд «Сбер — Облигации»', desc: 'Сбалансированный портфель IG бондов', yld: '+11.2%' },
+      { icon: '🌍', bg: 'rgba(150,100,255,0.1)', name: 'Фонд «Глобальные рынки»', desc: 'Дружественные рынки (Китай, ОАЭ, Индия)', yld: '+14.1%' },
+      { icon: '💎', bg: 'rgba(240,199,94,0.1)', name: 'БПИФ «Золото»', desc: 'Физическое золото, хедж инфляции', yld: '+6.8%' },
+      { icon: '🔥', bg: 'rgba(232,72,85,0.1)', name: 'IPO-портфель Сбер', desc: 'Аллокация в российские IPO 2026', yld: '+22–40%*' },
+      { icon: '📊', bg: 'rgba(33,160,56,0.1)', name: 'Фонд денежного рынка', desc: 'RUSFAR o/n, парковка кэша', yld: '15.8%' },
+    ]
+  },
+  aggressive: {
+    label: '🔥 Агрессивный профиль', cls: 'risk-aggressive',
+    stat: 'Агрессивный',
+    alloc: [
+      { name: 'Акции роста (РФ)', pct: 40, color: '#E84855' },
+      { name: 'Малая капитализация', pct: 15, color: '#FF7B89' },
+      { name: 'IPO / Pre-IPO', pct: 15, color: '#21A038' },
+      { name: 'Глобальные акции', pct: 15, color: '#6B9CFF' },
+      { name: 'Крипто-фонды', pct: 10, color: '#F0C75E' },
+      { name: 'Кэш (RUSFAR)', pct: 5, color: '#888' }
+    ],
+    products: [
+      { icon: '🚀', bg: 'rgba(232,72,85,0.1)', name: 'Акции роста: Яндекс, Ozon, Позитив', desc: 'Технологический сектор РФ', yld: '+28.5%' },
+      { icon: '🔥', bg: 'rgba(33,160,56,0.1)', name: 'IPO-портфель Сбер', desc: 'Первичные размещения 2026', yld: '+22–40%*' },
+      { icon: '🏭', bg: 'rgba(240,199,94,0.1)', name: 'Малая капитализация (МосБиржа)', desc: 'Ашинский МЗ, ЕМС, Селигдар', yld: '+35.2%' },
+      { icon: '🌐', bg: 'rgba(100,180,255,0.1)', name: 'Фонд «Дружественные рынки»', desc: 'BRICS+, Гонконг, ОАЭ, Индия', yld: '+14.1%' },
+      { icon: '₿', bg: 'rgba(240,199,94,0.1)', name: 'Крипто-ETP через СПБ Биржу', desc: 'BTC/ETH, допуск квал. инвесторов', yld: '+52%*' },
+      { icon: '💰', bg: 'rgba(150,100,255,0.1)', name: 'Маржинальная стратегия Сбер', desc: 'Плечо x2 на индекс МосБиржи', yld: '+36%*' },
+    ]
+  }
+};
+
+const INDICES = [
+  { name: 'Индекс МосБиржи', ticker: 'IMOEX', price: 3186, pct: +0.82 },
+  { name: 'РТС', ticker: 'RTSI', price: 1142, pct: +1.15 },
+  { name: 'S&P 500', ticker: 'SPX', price: 6015, pct: +0.34 },
+  { name: 'Золото', ticker: 'XAUUSD', price: 2847, pct: -0.21 },
+  { name: 'Нефть Brent', ticker: 'BRN', price: 78.6, pct: +1.48 },
+  { name: 'USD/RUB', ticker: 'USDRUB', price: 87.42, pct: -0.33 },
+  { name: 'EUR/RUB', ticker: 'EURRUB', price: 94.18, pct: -0.12 },
+  { name: 'Ключевая ставка ЦБ', ticker: 'CBRF', price: 21.0, pct: 0 },
+];
+
+const AI_RECS = {
+  conservative: [
+    { icon: '🛡️', title: 'Защита капитала', text: 'При текущей ставке ЦБ 21% денежный рынок и короткие ОФЗ дают безрисковую доходность выше инфляции. Рекомендую 60% портфеля в фиксированном доходе.', tag: 'Приоритет' },
+    { icon: '📉', title: 'Хеджирование', text: 'Добавьте 5–8% золота как хедж от геополитических рисков. Фонд «Золото» Сбера даёт экспозицию без хранения физического металла.', tag: 'Защита' },
+    { icon: '📆', title: 'Лестница облигаций', text: 'Сформируйте «лестницу» из ОФЗ с погашением в 2027, 2029, 2031 — это обеспечит стабильный денежный поток и снизит процентный риск.', tag: 'Стратегия' }
+  ],
+  moderate: [
+    { icon: '⚡', title: 'Ребалансировка Q3', text: 'Рынок акций РФ торгуется на P/E 5.2 — историческое дно. Увеличьте долю акций с 30% до 35%, сократив денежный рынок. Сбер, Лукойл, Полюс — фавориты.', tag: 'Действие сейчас' },
+    { icon: '🌍', title: 'Диверсификация', text: 'Добавьте 15% в дружественные рынки через БПИФ: Китай (технологии), Индия (потребление), ОАЭ (инфраструктура). Это снизит страновой риск.', tag: 'Диверсификация' },
+    { icon: '💡', title: 'Дивидендный календарь', text: 'В июле–сентябре отсечки у Сбера (33.3₽/акцию), Лукойла, Роснефти. Зафиксируйте позиции до 8 июля для участия в дивидендах Сбера.', tag: 'Дивиденды' }
+  ],
+  aggressive: [
+    { icon: '🔥', title: 'IPO-окно открыто', text: 'В Q3 2026 ждём 5+ IPO на МосБирже. Исторически аллокация в IPO через Сбер давала +22–40% за первый месяц. Держите 15% кэша для участия.', tag: 'Возможность' },
+    { icon: '🎲', title: 'Сектор малой капитализации', text: 'Small-caps РФ отстали от IMOEX на 18% YTD. При снижении ставки ЦБ в Q4 ожидаем перетока ликвидности. Точка входа — сейчас.', tag: 'Высокий потенциал' },
+    { icon: '⚠️', title: 'Управление рисками', text: 'При агрессивной стратегии обязательно: стоп-лоссы на -12%, максимум 8% портфеля в одной позиции, еженедельная ребалансировка. Дисциплина > доходность.', tag: 'Риск-менеджмент' }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════════════
+
+let allocChart, perfChart, scenarioChart;
+
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } }
+};
+
+function initAllocChart() {
+  const ctx = document.getElementById('allocChart').getContext('2d');
+  const p = PROFILES[STATE.profile];
+  allocChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: p.alloc.map(a => a.name),
+      datasets: [{
+        data: p.alloc.map(a => a.pct),
+        backgroundColor: p.alloc.map(a => a.color),
+        borderWidth: 0, hoverOffset: 8
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(16,22,36,0.95)', titleColor: '#fff', bodyColor: '#ccc',
+          cornerRadius: 8, padding: 12,
+          callbacks: { label: c => `${c.label}: ${c.parsed}%` }
+        }
+      }
+    }
+  });
+  renderAllocLegend(p.alloc);
+}
+
+function renderAllocLegend(alloc) {
+  const el = document.getElementById('allocLegend');
+  el.innerHTML = alloc.map(a =>
+    `<div class="alloc-legend-item"><span class="alloc-dot" style="background:${a.color}"></span>${a.name} · ${a.pct}%</div>`
+  ).join('');
+}
+
+function generatePerfData(months) {
+  const data = []; let val = 3800000;
+  for (let i = 0; i <= months; i++) {
+    const r = (Math.random() - 0.42) * 0.04;
+    val *= (1 + r); data.push(Math.round(val));
+  }
+  return data;
+}
+
+function generateBenchData(months) {
+  const data = []; let val = 3800000;
+  for (let i = 0; i <= months; i++) {
+    const r = (Math.random() - 0.45) * 0.035;
+    val *= (1 + r); data.push(Math.round(val));
+  }
+  return data;
+}
+
+function monthLabels(n) {
+  const labels = []; const now = new Date();
+  for (let i = n; i >= 0; i--) {
+    const d = new Date(now); d.setMonth(d.getMonth() - i);
+    labels.push(d.toLocaleDateString('ru', { month: 'short', year: i % 12 === 0 ? 'numeric' : undefined }));
+  }
+  return labels;
+}
+
+function initPerfChart(months = 1) {
+  const ctx = document.getElementById('perfChart').getContext('2d');
+  if (perfChart) perfChart.destroy();
+  const labels = monthLabels(months);
+  const portfolio = generatePerfData(months);
+  const bench = generateBenchData(months);
+
+  perfChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Ваш портфель',
+          data: portfolio,
+          borderColor: '#21A038', backgroundColor: 'rgba(33,160,56,0.08)',
+          fill: true, tension: 0.4, borderWidth: 2.5, pointRadius: 0
+        },
+        {
+          label: 'Бенчмарк (IMOEX)',
+          data: bench,
+          borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'transparent',
+          fill: false, tension: 0.4, borderWidth: 1.5, pointRadius: 0,
+          borderDash: [5, 5]
+        }
+      ]
+    },
+    options: {
+      ...chartDefaults,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 10 } } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: 'rgba(255,255,255,0.3)', font: { size: 10 },
+            callback: v => (v/1e6).toFixed(1) + ' млн' }
+        }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, padding: 16, usePointStyle: true, pointStyle: 'line' } },
+        tooltip: {
+          backgroundColor: 'rgba(16,22,36,0.95)', titleColor: '#fff', bodyColor: '#ccc',
+          cornerRadius: 8, padding: 12,
+          callbacks: { label: c => `${c.dataset.label}: ${(c.parsed.y/1e6).toFixed(2)} млн ₽` }
+        }
+      }
+    }
+  });
+}
+
+function initScenarioChart() {
+  const ctx = document.getElementById('scenarioChart').getContext('2d');
+  if (scenarioChart) scenarioChart.destroy();
+  const years = 5; const labels = [];
+  for (let i = 0; i <= years; i++) labels.push(2026 + i);
+
+  const rates = { optimistic: 0.22, base: 0.14, pessimistic: 0.04 };
+  const scenarios = {};
+  for (const [k, r] of Object.entries(rates)) {
+    const d = [4280000];
+    for (let i = 1; i <= years; i++) d.push(Math.round(d[i-1] * (1 + r)));
+    scenarios[k] = d;
+  }
+
+  scenarioChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Оптимистичный (+22%)', data: scenarios.optimistic, borderColor: '#21A038', backgroundColor: 'rgba(33,160,56,0.06)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#21A038' },
+        { label: 'Базовый (+14%)', data: scenarios.base, borderColor: '#6B9CFF', backgroundColor: 'rgba(107,156,255,0.06)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#6B9CFF' },
+        { label: 'Пессимистичный (+4%)', data: scenarios.pessimistic, borderColor: '#E84855', backgroundColor: 'rgba(232,72,85,0.06)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#E84855' }
+      ]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.3)' } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: 'rgba(255,255,255,0.3)', callback: v => (v/1e6).toFixed(1) + ' млн' }
+        }
+      },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: 'rgba(255,255,255,0.5)', font: { size: 11 }, padding: 12, usePointStyle: true } },
+        tooltip: {
+          backgroundColor: 'rgba(16,22,36,0.95)', cornerRadius: 8, padding: 12,
+          callbacks: { label: c => `${c.dataset.label}: ${(c.parsed.y/1e6).toFixed(2)} млн ₽` }
+        }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER FUNCTIONS
+// ═══════════════════════════════════════════════════════
+
+function renderProducts(products) {
+  document.getElementById('productList').innerHTML = products.map(p =>
+    `<div class="product-item">
+      <div class="product-icon" style="background:${p.bg}">${p.icon}</div>
+      <div class="product-info">
+        <div class="product-name">${p.name}</div>
+        <div class="product-desc">${p.desc}</div>
+      </div>
+      <div class="product-yield green">${p.yld}</div>
+    </div>`
+  ).join('');
+}
+
+function renderIndices() {
+  document.getElementById('indicesList').innerHTML = INDICES.map(idx => {
+    const cls = idx.pct > 0 ? 'up' : idx.pct < 0 ? 'down' : '';
+    const sign = idx.pct > 0 ? '+' : '';
+    const fmt = idx.price >= 1000 ? idx.price.toLocaleString('ru') : idx.price;
+    return `<div class="index-item">
+      <div><div class="index-name">${idx.name}</div><div class="index-ticker">${idx.ticker}</div></div>
+      <div class="index-val">
+        <div class="index-price">${fmt}</div>
+        <div class="index-pct stat-change ${cls}">${sign}${idx.pct.toFixed(2)}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAI(recs) {
+  document.getElementById('aiGrid').innerHTML = recs.map(r =>
+    `<div class="ai-card">
+      <div class="ai-card-icon">${r.icon}</div>
+      <div class="ai-card-title">${r.title}</div>
+      <div class="ai-card-text">${r.text}</div>
+      <span class="ai-card-tag">${r.tag}</span>
+    </div>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROFILE LOGIC
+// ═══════════════════════════════════════════════════════
+
+function computeProfile() {
+  const score = STATE.horizon + STATE.drawdown + STATE.experience + Math.floor(STATE.targetYield / 10);
+  STATE.riskScore = score;
+  if (score <= 6) STATE.profile = 'conservative';
+  else if (score <= 11) STATE.profile = 'moderate';
+  else STATE.profile = 'aggressive';
+
+  const p = PROFILES[STATE.profile];
+
+  // Badge
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = p.label;
+  badge.className = 'risk-badge ' + p.cls;
+
+  // Stat card
+  document.getElementById('riskProfileStat').textContent = p.stat;
+
+  // Update allocation chart
+  allocChart.data.labels = p.alloc.map(a => a.name);
+  allocChart.data.datasets[0].data = p.alloc.map(a => a.pct);
+  allocChart.data.datasets[0].backgroundColor = p.alloc.map(a => a.color);
+  allocChart.update();
+  renderAllocLegend(p.alloc);
+
+  // Update products
+  renderProducts(p.products);
+
+  // Update AI recs
+  renderAI(AI_RECS[STATE.profile]);
+}
+
+// ═══════════════════════════════════════════════════════
+//  GOAL CALCULATOR
+// ═══════════════════════════════════════════════════════
+
+function parseNum(s) { return parseFloat(String(s).replace(/\s/g, '').replace(',', '.')) || 0; }
+
+function calculateGoal() {
+  const goal = parseNum(document.getElementById('goalAmount').value);
+  const years = parseInt(document.getElementById('goalYears').value) || 5;
+  const initial = parseNum(document.getElementById('goalInitial').value);
+  const strategy = document.getElementById('goalStrategy').value;
+  const rates = { conservative: 0.08, moderate: 0.14, aggressive: 0.22 };
+  const r = rates[strategy];
+  const monthlyRate = Math.pow(1 + r, 1/12) - 1;
+  const n = years * 12;
+
+  // FV of initial
+  const fvInitial = initial * Math.pow(1 + monthlyRate, n);
+  const remaining = goal - fvInitial;
+
+  let monthly = 0;
+  if (remaining > 0) {
+    monthly = remaining * monthlyRate / (Math.pow(1 + monthlyRate, n) - 1);
+  }
+
+  const totalInvested = initial + monthly * n;
+  const profit = goal - totalInvested;
+
+  document.getElementById('calcMonthly').textContent = Math.round(monthly).toLocaleString('ru') + ' ₽/мес';
+  document.getElementById('calcDetails').innerHTML =
+    `Общая сумма вложений: <strong>${Math.round(totalInvested).toLocaleString('ru')} ₽</strong><br>
+     Инвестиционный доход: <strong style="color:var(--sber-green-light)">${Math.round(profit).toLocaleString('ru')} ₽</strong> (${(profit/totalInvested*100).toFixed(0)}% прирост)<br>
+     Стратегия: ${strategy === 'conservative' ? 'Консервативная (8%)' : strategy === 'moderate' ? 'Умеренная (14%)' : 'Агрессивная (22%)'} · Срок: ${years} лет`;
+
+  document.getElementById('calcResult').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════════
+
+document.querySelectorAll('.radio-group').forEach(group => {
+  group.querySelectorAll('.radio-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      STATE[group.dataset.q] = parseInt(btn.dataset.v);
+      computeProfile();
+    });
+  });
+});
+
+document.getElementById('yieldSlider').addEventListener('input', e => {
+  STATE.targetYield = parseInt(e.target.value);
+  document.getElementById('targetYield').textContent = STATE.targetYield + '%';
+  computeProfile();
+});
+
+document.querySelectorAll('.chart-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const periods = { '1m': 1, '3m': 3, '6m': 6, '1y': 12, 'all': 36 };
+    initPerfChart(periods[tab.dataset.period]);
+  });
+});
+
+// ── Clock ──
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' +
+    now.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ── Simulated live index updates ──
+function tickIndices() {
+  INDICES.forEach(idx => {
+    const delta = (Math.random() - 0.5) * 0.003;
+    idx.price *= (1 + delta);
+    idx.pct += delta * 100;
+    idx.price = parseFloat(idx.price.toFixed(idx.price > 100 ? 0 : 2));
+    idx.pct = parseFloat(idx.pct.toFixed(2));
+  });
+  renderIndices();
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+
+window.addEventListener('DOMContentLoaded', () => {
+  updateClock(); setInterval(updateClock, 30000);
+  initAllocChart();
+  initPerfChart(1);
+  initScenarioChart();
+  renderIndices();
+  computeProfile();
+  setInterval(tickIndices, 4000);
+});
+</script>
+</body>
+</html>
